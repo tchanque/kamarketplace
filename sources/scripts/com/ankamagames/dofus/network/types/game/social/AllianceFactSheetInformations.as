@@ -10,7 +10,7 @@ package com.ankamagames.dofus.network.types.game.social
    public class AllianceFactSheetInformations extends AllianceInformations implements INetworkType
    {
       
-      public static const protocolId:uint = 883;
+      public static const protocolId:uint = 3583;
        
       
       public var creationDate:uint = 0;
@@ -28,7 +28,7 @@ package com.ankamagames.dofus.network.types.game.social
       
       override public function getTypeId() : uint
       {
-         return 883;
+         return 3583;
       }
       
       public function initAllianceFactSheetInformations(allianceId:uint = 0, allianceTag:String = "", allianceName:String = "", allianceEmblem:GuildEmblem = null, creationDate:uint = 0, nbGuilds:uint = 0, nbMembers:uint = 0, nbSubarea:uint = 0) : AllianceFactSheetInformations

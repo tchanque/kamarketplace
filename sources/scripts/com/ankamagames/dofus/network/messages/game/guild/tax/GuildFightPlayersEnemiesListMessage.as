@@ -12,7 +12,7 @@ package com.ankamagames.dofus.network.messages.game.guild.tax
    public class GuildFightPlayersEnemiesListMessage extends NetworkMessage implements INetworkMessage
    {
       
-      public static const protocolId:uint = 494;
+      public static const protocolId:uint = 881;
        
       
       private var _isInitialized:Boolean = false;
@@ -36,7 +36,7 @@ package com.ankamagames.dofus.network.messages.game.guild.tax
       
       override public function getMessageId() : uint
       {
-         return 494;
+         return 881;
       }
       
       public function initGuildFightPlayersEnemiesListMessage(fightId:Number = 0, playerInfo:Vector.<CharacterMinimalPlusLookInformations> = null) : GuildFightPlayersEnemiesListMessage

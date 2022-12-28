@@ -11,7 +11,7 @@ package com.ankamagames.dofus.network.messages.game.guild
    public class ChallengeFightJoinRefusedMessage extends NetworkMessage implements INetworkMessage
    {
       
-      public static const protocolId:uint = 6542;
+      public static const protocolId:uint = 4363;
        
       
       private var _isInitialized:Boolean = false;
@@ -32,7 +32,7 @@ package com.ankamagames.dofus.network.messages.game.guild
       
       override public function getMessageId() : uint
       {
-         return 6542;
+         return 4363;
       }
       
       public function initChallengeFightJoinRefusedMessage(playerId:Number = 0, reason:int = 0) : ChallengeFightJoinRefusedMessage
