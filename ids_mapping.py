@@ -1,3 +1,5 @@
+# USE JPEXS Free Flash Decompiler to decompile the source code, see decompile.sh
+
 import os
 import pickle
 
@@ -48,6 +50,8 @@ def load_ids():
     global dict_ids
     dict_ids = pickle.load(f)
     f.close()
+
+    return dict_ids
 
 
 if __name__ == "__main__":

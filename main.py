@@ -1,5 +1,7 @@
 import pyshark
 import pandas as pd
+import nest_asyncio
+nest_asyncio.apply()
 
 
 def sniff_packets(time):
