@@ -1,5 +1,6 @@
 from ids_mapping import load_ids
 
+
 def split_payload(payload):
     bytes_list = payload.split(':')
 
