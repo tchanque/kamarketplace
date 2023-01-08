@@ -7,7 +7,7 @@ export config='parallelSpeedUp=0'
 #cd "$( dirname "${BASH_SOURCE[0]}" )"
 #cd ..
 
-/Users/thomasaudevie/Desktop/projets-perso/FFDec.app/Contents/Resources/ffdec.sh \
+/Applications/FFDec.app/Contents/Resources/ffdec.sh \
   -config "$config" \
     -selectclass "$selectclass" \
       -export script \

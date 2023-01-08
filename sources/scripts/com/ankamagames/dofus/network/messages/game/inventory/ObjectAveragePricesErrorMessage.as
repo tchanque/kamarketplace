@@ -11,7 +11,7 @@ package com.ankamagames.dofus.network.messages.game.inventory
    public class ObjectAveragePricesErrorMessage extends NetworkMessage implements INetworkMessage
    {
       
-      public static const protocolId:uint = 3055;
+      public static const protocolId:uint = 963;
        
       
       public function ObjectAveragePricesErrorMessage()
@@ -26,7 +26,7 @@ package com.ankamagames.dofus.network.messages.game.inventory
       
       override public function getMessageId() : uint
       {
-         return 3055;
+         return 963;
       }
       
       public function initObjectAveragePricesErrorMessage() : ObjectAveragePricesErrorMessage

@@ -11,7 +11,7 @@ package com.ankamagames.dofus.network.messages.game.alliance
    public class AllianceLeftMessage extends NetworkMessage implements INetworkMessage
    {
       
-      public static const protocolId:uint = 6754;
+      public static const protocolId:uint = 5932;
        
       
       public function AllianceLeftMessage()
@@ -26,7 +26,7 @@ package com.ankamagames.dofus.network.messages.game.alliance
       
       override public function getMessageId() : uint
       {
-         return 6754;
+         return 5932;
       }
       
       public function initAllianceLeftMessage() : AllianceLeftMessage
