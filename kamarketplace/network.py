@@ -33,7 +33,7 @@ def sniff_(
 def on_receive(pa):
     # do something when receive the packet
     message = Packet(pa)
-    message.print()
+    message.deserialize()
 
 
 interface = "en0"
@@ -63,5 +63,5 @@ def launch_sniff(action, offline=None):
 if __name__ == "__main__":
     launch_sniff(
         action=on_receive,
-        # offline="data/captured_packets.pcap"
+        offline="data/captured_packets.pcap"
                  )

@@ -3,7 +3,7 @@ import logging
 import random
 from zlib import decompress
 
-from .protocol_load import types, msg_from_id, types_from_id, primitives
+from kamarketplace.legacy.protocol_load import types, msg_from_id, types_from_id, primitives
 from kamarketplace.data import Data, Buffer
 
 
