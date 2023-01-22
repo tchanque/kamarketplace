@@ -2,6 +2,7 @@ from scapy.all import *
 import os
 from bitstring import BitArray
 import pickle
+from .protocol_load import read_message
 
 
 cdir = os.getcwd()
@@ -60,13 +61,43 @@ class Packet:
 
         size = int(bits[-2:], 2)
         print("The protocol ID is %s and the action is %s" % (id_protocol, protocol_name))
-        print("The size is %s" % size)
+        # print("The size is %s" % size)
 
         message_size = remaining_data[:size]
         remaining_data = remaining_data[:size]
-        print(message_size)
+        # print(message_size)
 
         # need to deserialize now
+        msg_structure = msg_from_id[id_protocol]
+        # print(msg_structure)
+        # variables_structure = msg_structure['vars']
+        #
+        # for var_str in variables_structure:
+        #     print(var_str)
+        #     name = var_str['name']
+        #     length = var_str['length']
+        #     type = var_str['type']
+        #     optional = var_str['optional']
+        #
+        #     if type and type not in primitives:
+        #         print("Type %s has its own structure" % type)
+        #         type_structure = types[type]
+        #         for
+        #
+        #     else:
+        #         # read_primitive_type()
+
+        read_message(remaining_data, id_protocol)
+
+
+
+
+
+
+
+
+
+
 
 
 
