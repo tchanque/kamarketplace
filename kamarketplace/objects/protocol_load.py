@@ -28,7 +28,7 @@ def read_message(to_decode, msg_type):
 
                 if var_type and var_type not in primitives:
                     print("The variable %s is a complex type %s" % (var_name, var_type))
-                    read_message(to_decode, var_type)
+                    read_message_refacto(to_decode, var_type)
 
                 elif var_type:
                     print("The variable %s is a primitive type %s" % (var_name, var_type))
@@ -42,4 +42,5 @@ def read_message(to_decode, msg_type):
 
         print("***  END DESERIALIZATION   ***")
         return msg_structure
+
 
