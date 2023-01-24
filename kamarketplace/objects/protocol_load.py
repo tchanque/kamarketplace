@@ -1,5 +1,8 @@
 from pathlib import Path
 import pickle
+import sys
+sys.setrecursionlimit(2000)
+
 
 with (Path(__file__).parent / "protocol.pk").open("rb") as f:
     types = pickle.load(f)
@@ -8,27 +11,35 @@ with (Path(__file__).parent / "protocol.pk").open("rb") as f:
     primitives = pickle.load(f)
 
 
-def read_message(to_decode, protocol_id):
-    msg_structure = msg_from_id[protocol_id]
+def read_message(to_decode, msg_type):
+    msg_structure = types[msg_type]
     var_structures = msg_structure['vars']
+    print("Deserialize %s %s" % (msg_type, var_structures))
 
-    for var_str in var_structures:
-        read_type(var_str)
+    while to_decode:
 
-    # return message
+        for var_str in var_structures:
+            var_type = var_str['type']
+            var_name = var_str['name']
+            # var_length = var_str['length']
+            var_length = 1
 
+            for iteration in range(0, var_length):
 
-def read_type(structure):
-    # must return the structure of a variable
+                if var_type and var_type not in primitives:
+                    print("The variable %s is a complex type %s" % (var_name, var_type))
+                    read_message(to_decode, var_type)
 
-    if structure['type'] and structure['type'] not in primitives:
-        print("The type %s is complex" % structure['type'])
-        # return types_from_id[type_]
+                elif var_type:
+                    print("The variable %s is a primitive type %s" % (var_name, var_type))
+                    to_decode = to_decode[1:]
+                    # do something
 
-    elif structure['type']:
-        print("The type %s is a primitive" % structure['type'])
-        # return primitives[type_]
+                else:
+                    print("No type")
+                    to_decode = to_decode[1:]
+                    # do something
 
-    else:
-        print("No type")
-        # return False
+        print("***  END DESERIALIZATION   ***")
+        return msg_structure
+

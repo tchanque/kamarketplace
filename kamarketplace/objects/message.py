@@ -2,7 +2,8 @@ from scapy.all import *
 import os
 from bitstring import BitArray
 import pickle
-from .protocol_load import read_message
+from .protocol_load import *
+import json
 
 
 cdir = os.getcwd()
@@ -27,7 +28,7 @@ class Packet:
         self.pa = pa
         self.ip_layer = self.pa.getlayer("IP")
         self.payload = self.read()
-        print(self.payload)
+        # print(self.payload)
 
     def dump(self):
         global packet_dump
@@ -49,7 +50,7 @@ class Packet:
 
     def deserialize(self):
         # read the header
-        print("Reading the first byte")
+        # print("Reading the first byte")
         remaining_data = self.payload
 
         header = remaining_data[:2]
@@ -64,30 +65,19 @@ class Packet:
         # print("The size is %s" % size)
 
         message_size = remaining_data[:size]
-        remaining_data = remaining_data[:size]
+        remaining_data = remaining_data[size:]
         # print(message_size)
 
         # need to deserialize now
         msg_structure = msg_from_id[id_protocol]
-        # print(msg_structure)
-        # variables_structure = msg_structure['vars']
-        #
-        # for var_str in variables_structure:
-        #     print(var_str)
-        #     name = var_str['name']
-        #     length = var_str['length']
-        #     type = var_str['type']
-        #     optional = var_str['optional']
-        #
-        #     if type and type not in primitives:
-        #         print("Type %s has its own structure" % type)
-        #         type_structure = types[type]
-        #         for
-        #
-        #     else:
-        #         # read_primitive_type()
+        msg_type = msg_structure['name']
 
-        read_message(remaining_data, id_protocol)
+        print(msg_structure)
+
+        print("***Start deserialization***")
+        read_message(remaining_data, msg_type)
+
+
 
 
 
