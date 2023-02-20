@@ -33,7 +33,7 @@ def sniff_(
 def on_receive(pa):
     # do something when receive the packet
     message = Packet(pa)
-    message.deserialize()
+    message.get_content()
 
 
 interface = "en0"

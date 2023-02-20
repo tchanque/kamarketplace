@@ -1,21 +1,24 @@
 from scapy.all import *
 import os
-from bitstring import BitArray
+import sys
 import pickle
-from .protocol_load import *
-import json
+from pathlib import Path
 
+from protocol.protocol_reader import read_message, msg_from_id
+from protocol.types_reader import Data, DIC_TYPES
 
-cdir = os.getcwd()
-pardir = os.path.dirname(cdir)
-path = os.path.join(pardir,
-                    os.path.join('kamarketplace', 'data/captured_packets.pcap'))
+sys.setrecursionlimit(10000)
+
+sys.path.insert(0, os.path.abspath('..'))
+
+path = os.path.join(os.path.dirname(os.getcwd()),
+                    'kamarketplace', 'data/captured_packets.pcap')
 
 packet_dump = PcapWriter(path,
                          append=True,
                          sync=True)
 
-with open(os.path.dirname(os.path.abspath("__file__")) + "/protocol.pk", mode="rb") as f:
+with (Path(__file__).parent / "protocol.pk").open("rb") as f:
     types = pickle.load(f)
     msg_from_id = pickle.load(f)
     types_from_id = pickle.load(f)
@@ -27,8 +30,13 @@ class Packet:
     def __init__(self, pa):
         self.pa = pa
         self.ip_layer = self.pa.getlayer("IP")
-        self.payload = self.read()
-        # print(self.payload)
+        self.payload = self.pa.getlayer(Raw).load
+        self.protocol_id = None
+        self.protocol_name = None
+        self.content_to_decode = None
+        self.content = {}
+
+        self.read_header()
 
     def dump(self):
         global packet_dump
@@ -45,49 +53,65 @@ class Packet:
                 dst=self.ip_layer.dst)
         )
 
-    def read(self):
-        return bytes(self.pa["TCP"].payload)
+    def read_header(self):
+        msg_to_decode = bytearray(self.payload)
 
-    def deserialize(self):
-        # read the header
-        # print("Reading the first byte")
-        remaining_data = self.payload
+        # Header of the message - Protocol ID and Size
+        header = msg_to_decode[:2]
+        msg_to_decode = msg_to_decode[2:]
 
-        header = remaining_data[:2]
-        remaining_data = remaining_data[2:]
+        header_int = int.from_bytes(header, byteorder="big")
+        self.protocol_id = header_int >> 2
+        self.protocol_name = msg_from_id[self.protocol_id]['name']
+        len_len = header_int & 3
 
-        bits = BitArray(header).bin
-        id_protocol = int(bits[:14], 2)
-        protocol_name = msg_from_id[id_protocol]['name']
+        length_data = int.from_bytes(msg_to_decode[:len_len], byteorder="big")
+        self.content_to_decode = Data(msg_to_decode[len_len:length_data])
 
-        size = int(bits[-2:], 2)
-        print("The protocol ID is %s and the action is %s" % (id_protocol, protocol_name))
-        # print("The size is %s" % size)
+        print("The protocol ID is %s" % self.protocol_id)
 
-        message_size = remaining_data[:size]
-        remaining_data = remaining_data[size:]
-        # print(message_size)
+    def get_content(self, protocol_name=None):
+        if protocol_name is None:
+            protocol_name = self.protocol_name
 
-        # need to deserialize now
-        msg_structure = msg_from_id[id_protocol]
-        msg_type = msg_structure['name']
+        structure = types[protocol_name]
 
-        print(msg_structure)
+        print("Deserializing %s" % protocol_name)
+        print(self.content_to_decode.remaining)
+        variables = structure['vars']
 
-        print("***Start deserialization***")
-        read_message(remaining_data, msg_type)
+        while self.content_to_decode.remaining:
 
+            if not structure['parent'] is None:
+                print("The message %s has a parent which is %s" % (protocol_name,
+                                                                   structure['parent']))
+                # recall the function above
+                parent = structure['parent']
+                self.get_content(parent)
 
+            for var in variables:
+                var_type = var['type']
+                var_name = var['name']
+                var_length = var['length']
+                print(var_name)
 
+                if var_type is False:
+                    type_id = self.content_to_decode.read_unsignedshort()
+                    type_name = types_from_id[type_id]['name']
+                    self.get_content(type_name)
 
+                elif var_type and var_type not in primitives:
+                    print("Type %s is complex" % var_type)
+                    self.get_content(var_type)
 
+                else:
+                    print("Type %s is primitive" % var_type)
+                    func = DIC_TYPES[var_type]
+                    res = func(self.content_to_decode)
+                    self.content[var_name] = res
+                    print("Variable %s : %s" % (var_name, res))
 
+            return self.content
 
-
-
-
-
-
-
-
-
+        print("*** Finished deserialization of %s ***" % protocol_name)
+        return self.content
