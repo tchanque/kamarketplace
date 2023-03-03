@@ -1,11 +1,5 @@
-from scapy import plist
 from scapy.all import conf, PcapReader, Raw, sniff
 from objects.message import Packet
-from scapy.data import ETH_P_ALL, MTU
-
-from select import select
-import threading
-import errno
 
 
 def sniff_(
@@ -33,7 +27,9 @@ def sniff_(
 def on_receive(pa):
     # do something when receive the packet
     message = Packet(pa)
-    message.read()
+    message.print()
+    message.launch_read()
+    print("The content of the message is %s" % message.content)
 
 
 interface = "en0"

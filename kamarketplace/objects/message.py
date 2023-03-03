@@ -9,7 +9,7 @@ import math
 
 from protocol.types_reader import Data, DIC_TYPES
 
-sys.setrecursionlimit(10000)
+sys.setrecursionlimit(100)
 
 sys.path.insert(0, os.path.abspath('..'))
 
@@ -35,9 +35,9 @@ class Packet:
         self.payload = self.pa.getlayer(Raw).load
         self.protocol_id = None
         self.protocol_name = None
+        self.header = None
         self.data = None
         self.content = {}
-
         self.read_header()
 
     def dump(self):
@@ -56,27 +56,26 @@ class Packet:
         )
 
     def read_header(self):
-        msg_to_decode = bytearray(self.payload)
-        print("The message to decode is %s" % msg_to_decode)
+        self.header = Data(bytearray(self.payload))
 
         # Header of the message - Protocol ID and Size
-        header = msg_to_decode[:2]
-        msg_to_decode = msg_to_decode[2:]
 
-        header_int = int.from_bytes(header, byteorder="big")
-        self.protocol_id = header_int >> 2
+        header = self.header.read_byte(2)
+        self.protocol_id = header >> 2
         self.protocol_name = msg_from_id[self.protocol_id]['name']
-        len_len = header_int & 3
+        len_len = header & 3
 
-        length_data = int.from_bytes(msg_to_decode[:len_len], byteorder="big")
-        print("length data is %s" % length_data)
-        self.data = Data(msg_to_decode[len_len:length_data + 1])
+        data_length = self.header.read_unsigned_byte(len_len)
+        self.data = Data(self.header.read(data_length))
 
-        print("The protocol ID is %s" % self.protocol_id)
+        print("The protocol name is %s" % self.protocol_name)
 
     def launch_read(self):
+        print("***START DESERIALIZATION***")
         while self.data.remaining:
             self.read(type_=self.protocol_name)
+
+        print("***FINISHED DESERIALIZATION***")
 
     def read(self, type_=None):
         if type_ is None:
@@ -84,9 +83,10 @@ class Packet:
 
         # type can be false, in this case we need to read the first unsigned short which corresponds to the type id
         if type_ is False:
-            type_ = types[self.data.read_unsignedshort()]
+            print("Type is False so reading the unsigned short to get the id")
+            type_ = types_from_id[self.data.read_unsignedshort()]
 
-        # if type is directly coming from a variable thus is a string
+        # if type is directly coming from a variable then it is a string
         if isinstance(type_, str):
             if type_ in primitives:
                 func = DIC_TYPES[type_]
@@ -97,24 +97,33 @@ class Packet:
 
         # from this point on, type_ is the structure of a protocol as dict, with keys being name, parent, variables,
         # bool_vars
+
         if type_['parent']:
-            parent = type_['parent']
             results = self.read(type_['parent'])
 
         else:
             results = dict()
+            self.content["name"] = type_['name']
 
         for var in type_['vars']:
-            if var['length']:
-                func = DIC_TYPES[var['length']]
-                length = func(self.data)
+                if var['length']:
+                    func = DIC_TYPES[var['length']]
+                    length = func(self.data)
 
-                for n in range(length):
-                    self.read(var['type'])
+                    res = list()
+                    for n in range(length):
+                        res.append(self.read(var['type']))
+
+                    results[var["name"]] = res
+
+                else:
+                    print("Reading variable %s out of %s" % (var["name"], self.data.remaining))
+                    results[var["name"]] = self.read(var['type'])
 
         if type_['boolVars']:
-            self.read_bool_vars(type_['bool_vars'])
+            results.update(self.read_bool_vars(type_['boolVars']))
 
+        self.content.update(results)
         return results
 
     def read_bool_vars(self, boolvars):

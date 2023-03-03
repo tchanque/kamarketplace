@@ -1,5 +1,6 @@
 import struct
 
+
 class Data:
     def __init__(self, data):
         self.data = data
@@ -25,8 +26,8 @@ class Data:
         print("Reading byte from %s" % self.remaining)
         return int.from_bytes(self.read(byte_number), byteorder="big", signed=True)
 
-    def read_unsigned_byte(self):
-        return int.from_bytes(self.read(1), "big")
+    def read_unsigned_byte(self, byte_number=1):
+        return int.from_bytes(self.read(byte_number), "big")
 
     def read_bytearray(self):
         lon = self.readVarInt()
