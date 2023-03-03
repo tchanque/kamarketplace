@@ -1,10 +1,12 @@
+from pprint import pprint
+
 from scapy.all import *
 import os
 import sys
 import pickle
 from pathlib import Path
+import math
 
-from protocol.protocol_reader import read_message, msg_from_id
 from protocol.types_reader import Data, DIC_TYPES
 
 sys.setrecursionlimit(10000)
@@ -33,7 +35,7 @@ class Packet:
         self.payload = self.pa.getlayer(Raw).load
         self.protocol_id = None
         self.protocol_name = None
-        self.content_to_decode = None
+        self.data = None
         self.content = {}
 
         self.read_header()
@@ -55,6 +57,7 @@ class Packet:
 
     def read_header(self):
         msg_to_decode = bytearray(self.payload)
+        print("The message to decode is %s" % msg_to_decode)
 
         # Header of the message - Protocol ID and Size
         header = msg_to_decode[:2]
@@ -66,52 +69,79 @@ class Packet:
         len_len = header_int & 3
 
         length_data = int.from_bytes(msg_to_decode[:len_len], byteorder="big")
-        self.content_to_decode = Data(msg_to_decode[len_len:length_data])
+        print("length data is %s" % length_data)
+        self.data = Data(msg_to_decode[len_len:length_data + 1])
 
         print("The protocol ID is %s" % self.protocol_id)
 
-    def get_content(self, protocol_name=None):
-        if protocol_name is None:
-            protocol_name = self.protocol_name
+    def launch_read(self):
+        while self.data.remaining:
+            self.read(type_=self.protocol_name)
 
-        structure = types[protocol_name]
+    def read(self, type_=None):
+        if type_ is None:
+            type_ = self.protocol_name
 
-        print("Deserializing %s" % protocol_name)
-        print(self.content_to_decode.remaining)
-        variables = structure['vars']
+        # type can be false, in this case we need to read the first unsigned short which corresponds to the type id
+        if type_ is False:
+            type_ = types[self.data.read_unsignedshort()]
 
-        while self.content_to_decode.remaining:
+        # if type is directly coming from a variable thus is a string
+        if isinstance(type_, str):
+            if type_ in primitives:
+                func = DIC_TYPES[type_]
+                return func(self.data)
 
-            if not structure['parent'] is None:
-                print("The message %s has a parent which is %s" % (protocol_name,
-                                                                   structure['parent']))
-                # recall the function above
-                parent = structure['parent']
-                self.get_content(parent)
+            # else the type of the variable is complex therefore we look for its structure before continuing
+            type_ = types[type_]
 
-            for var in variables:
-                var_type = var['type']
-                var_name = var['name']
-                var_length = var['length']
-                print(var_name)
+        # from this point on, type_ is the structure of a protocol as dict, with keys being name, parent, variables,
+        # bool_vars
+        if type_['parent']:
+            parent = type_['parent']
+            results = self.read(type_['parent'])
 
-                if var_type is False:
-                    type_id = self.content_to_decode.read_unsignedshort()
-                    type_name = types_from_id[type_id]['name']
-                    self.get_content(type_name)
+        else:
+            results = dict()
 
-                elif var_type and var_type not in primitives:
-                    print("Type %s is complex" % var_type)
-                    self.get_content(var_type)
+        for var in type_['vars']:
+            if var['length']:
+                func = DIC_TYPES[var['length']]
+                length = func(self.data)
 
-                else:
-                    print("Type %s is primitive" % var_type)
-                    func = DIC_TYPES[var_type]
-                    res = func(self.content_to_decode)
-                    self.content[var_name] = res
-                    print("Variable %s : %s" % (var_name, res))
+                for n in range(length):
+                    self.read(var['type'])
 
-            return self.content
+        if type_['boolVars']:
+            self.read_bool_vars(type_['bool_vars'])
 
-        print("*** Finished deserialization of %s ***" % protocol_name)
-        return self.content
+        return results
+
+    def read_bool_vars(self, boolvars):
+        var_values = dict()
+
+        variables_count = len(boolvars)
+        bytes_to_read = math.ceil(variables_count / 8)
+
+        bin_ = format(self.data.read_byte(bytes_to_read),
+                      '0%sb' % (bytes_to_read * 8))
+
+        for i in range(0, bytes_to_read + 1):
+            n_start = 8 * i
+            n_end = 8 * (i + 1)
+
+            b = bin_[n_start: n_end]
+            bool_vars = [l['name'] for l in boolvars[n_start: n_end]]
+
+            i = 1
+            for var in bool_vars:
+                var_values.update({var: bool(int(b[-i]))})
+                print("Updating dictionary")
+                i += 1
+
+        return var_values
+
+
+
+
+
