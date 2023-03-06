@@ -75,7 +75,8 @@ class Packet:
         while self.data.remaining:
             self.read(type_=self.protocol_name)
 
-        print("The content of the message is %s" % self.content)
+        print("The content of the message is")
+        pprint(self.content)
         print("***FINISHED DESERIALIZATION***")
 
     def read(self, type_=None):

@@ -32,7 +32,6 @@ def on_receive(pa):
     message.launch_read()
 
 
-
 interface = "en0"
 
 
