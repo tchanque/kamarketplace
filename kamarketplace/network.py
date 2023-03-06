@@ -1,11 +1,5 @@
-from scapy import plist
 from scapy.all import conf, PcapReader, Raw, sniff
 from objects.message import Packet
-from scapy.data import ETH_P_ALL, MTU
-
-from select import select
-import threading
-import errno
 
 
 def sniff_(
@@ -32,8 +26,11 @@ def sniff_(
 
 def on_receive(pa):
     # do something when receive the packet
+    print("Packet received and interpretation")
     message = Packet(pa)
     message.print()
+    message.launch_read()
+
 
 
 interface = "en0"
@@ -63,5 +60,5 @@ def launch_sniff(action, offline=None):
 if __name__ == "__main__":
     launch_sniff(
         action=on_receive,
-        # offline="data/captured_packets.pcap"
+        offline="data/captured_packets.pcap"
                  )
