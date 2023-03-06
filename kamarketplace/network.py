@@ -26,10 +26,11 @@ def sniff_(
 
 def on_receive(pa):
     # do something when receive the packet
+    print("Packet received and interpretation")
     message = Packet(pa)
     message.print()
     message.launch_read()
-    print("The content of the message is %s" % message.content)
+
 
 
 interface = "en0"
