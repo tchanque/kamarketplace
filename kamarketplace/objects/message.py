@@ -1,5 +1,4 @@
 from pprint import pprint
-
 from scapy.all import *
 import os
 import sys
@@ -7,16 +6,29 @@ import pickle
 from pathlib import Path
 import math
 
-from protocol.types_reader import Data, DIC_TYPES
+from protocol.read_primitives import Data, DIC_TYPES
 
-sys.setrecursionlimit(100)
+# """ LOGGER configuration """
+import logging
+from logger.formatter import CustomFormatter
+
+log = logging.getLogger(__name__)
+log.setLevel(logging.INFO)
+
+# Not needed at the moment, will be when the logs become too heavy
+# logger_file = "./logger/message.log"
+# file_handler = logging.FileHandler(logger_file)
+
+handler = logging.StreamHandler()
+handler.setFormatter(CustomFormatter())
+
+log.addHandler(handler)
+
+# """ End of LOGGER configuration """
 
 sys.path.insert(0, os.path.abspath('..'))
-
-path = os.path.join(os.path.dirname(os.getcwd()),
-                    'kamarketplace', 'data/captured_packets.pcap')
-
-packet_dump = PcapWriter(path,
+path_to_dump = os.path.join(os.path.dirname(os.getcwd()), 'kamarketplace', 'data/captured_packets.pcap')
+packet_dump = PcapWriter(path_to_dump,
                          append=True,
                          sync=True)
 
@@ -38,15 +50,16 @@ class Packet:
         self.header = None
         self.data = None
         self.content = {}
+        self.print()
         self.read_header()
 
     def dump(self):
         global packet_dump
         self.print()
 
+        log.info("Dumping the packet in %s" % path_to_dump)
         packet_dump.write(self.pa)
-
-        print("Dumping the packet in data/captured_packets.pcap")
+        log.info("Dump has succeeded")
 
     def print(self):
         print(
@@ -56,6 +69,11 @@ class Packet:
         )
 
     def read_header(self):
+        """
+        Extract the protocol name out of the header
+        Also, extract the body of the packet, where the information is stored (self.data)
+
+        """
         self.header = Data(bytearray(self.payload))
 
         # Header of the message - Protocol ID and Size
@@ -68,16 +86,16 @@ class Packet:
         data_length = self.header.read_unsigned_byte(len_len)
         self.data = Data(self.header.read(data_length))
 
-        print("The protocol name is %s" % self.protocol_name)
+        log.info("Successfully read the header. Protocol name is %s" % self.protocol_name)
 
     def launch_read(self):
-        print("***START DESERIALIZATION***")
+        log.info("Starting packet deserialization")
         while self.data.remaining:
             self.read(type_=self.protocol_name)
 
-        print("The content of the message is")
+        print("The content of the packet is")
         pprint(self.content)
-        print("***FINISHED DESERIALIZATION***")
+        log.info("Packet deserialization is over")
 
     def read(self, type_=None):
         if type_ is None:
