@@ -1,4 +1,4 @@
-from scapy.all import conf, PcapReader, Raw, sniff
+from scapy.all import PcapReader, Raw, sniff
 from objects.message import Packet
 
 
@@ -59,5 +59,5 @@ def launch_sniff(action, offline=None):
 if __name__ == "__main__":
     launch_sniff(
         action=on_receive,
-        offline="data/captured_packets.pcap"
+        # offline="data/captured_packets.pcap"
                  )

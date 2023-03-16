@@ -1,17 +1,20 @@
 from pprint import pprint
 from scapy.all import *
 import os
-import sys
 import pickle
-from pathlib import Path
 import math
 
-from protocol.read_primitives import Data, DIC_TYPES
+import logging
+from kamarketplace.logger.formatter import CustomFormatter
+
+from kamarketplace.protocol.read_primitives import Data, DIC_TYPES
+
+from pathlib import Path
+import sys
+path_root = Path(__file__).parents[2]
+sys.path.append(str(path_root))
 
 # """ LOGGER configuration """
-import logging
-from logger.formatter import CustomFormatter
-
 log = logging.getLogger(__name__)
 log.setLevel(logging.INFO)
 
