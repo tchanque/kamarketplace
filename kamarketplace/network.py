@@ -30,14 +30,10 @@ def on_receive(pa):
     message = Packet(pa)
     message.print()
     message.launch_read()
-    try:
-        getattr(message, "protocol_name") & getattr(message, "content")
-        if message.protocol_name == "BidExchangerObjectInfo":
-            print("Inserting the resources prices in the Database")
-            message.push_pg()
 
-    except AttributeError:
-        print("Protocol not defined")
+    if getattr(message, "protocol_name") and message.protocol_name == "ExchangeTypesItemsExchangerDescriptionForUserMessage":
+        print("Inserting the resources prices in the Database")
+        message.push_pg()
 
 
 interface = "en0"

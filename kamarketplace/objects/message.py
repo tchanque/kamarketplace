@@ -10,11 +10,6 @@ import logging
 from kamarketplace.logger.formatter import CustomFormatter
 from kamarketplace.protocol.read_primitives import Data, DIC_TYPES
 
-from sqlalchemy import create_engine, inspect
-from kamarketplace.connectors.sql import DICT_SQL_TABLES_PROD
-
-engine = create_engine('sqlite:///postgres.db')
-
 from pathlib import Path
 import sys
 path_root = Path(__file__).parents[2]
@@ -198,8 +193,8 @@ class Packet:
     def push_pg(self):
         # table_name, table_structure = self.get_sql_table()
         # need to transform the content (flattening, only extracting the valuable columns)
-        resource = Price(self.content, self.sniff_time)
-        resource.to_pg()
+        price = Price(self.content, self.sniff_time)
+        price.to_pg()
 
 
 

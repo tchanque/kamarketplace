@@ -22,39 +22,35 @@ Base = declarative_base()
 class PriceTable(Base):
     __tablename__ = "prod_resource_prices"
 
-    id = Column(Integer, primary_key=True)
+    id = Column(VARCHAR, primary_key=True)
 
-    column1 = Column(VARCHAR)
-    column2 = Column(Integer)
-    column3 = Column(Integer)
-    column4 = Column(Integer)
-    column5 = Column(DateTime)
+    resource_id = Column(Integer)
+    price_1 = Column(Integer)
+    price_10 = Column(Integer)
+    price_100 = Column(Integer)
+    value_date = Column(VARCHAR)
 
 
 class Price:
     def __init__(self, packet_content, datetime):
         self.packet_content = packet_content
-        self.datetime = datetime
-        self.price_1 = None
-        self.price_10 = None
-        self.price_100 = None
-        self.object_id = self.packet_content['objectGID']
-        self.id_ = "_".join([self.object_id, self.datetime])
-
-    def to_table_format(self):
+        self.datetime = str(datetime)
         self.price_1, self.price_10, self.price_100 = self.packet_content['prices']
+        self.object_id = self.packet_content['objectGID']
+        self.id_ = "_".join([str(self.object_id), self.datetime])
 
     def to_pg(self):
-        self.to_table_format()
 
         # Create a session and insert a row
         session = Session()
         row = PriceTable(id=self.id_,
-                         column1=self.object_id,
-                         column2=self.price_1,
-                         column3=self.price_10,
-                         column4=self.price_100,
-                         column5=self.datetime)
+                         resource_id=self.object_id,
+                         price_1=self.price_1,
+                         price_10=self.price_10,
+                         price_100=self.price_100,
+                         value_date=self.datetime)
+        print("Inserting the rows corresponding to %s" % [self.object_id, self.price_1, self.price_10,
+                                                          self.price_100, self.datetime])
         session.add(row)
         session.commit()
         session.close()
