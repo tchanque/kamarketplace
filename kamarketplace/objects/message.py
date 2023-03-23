@@ -4,10 +4,16 @@ import os
 import pickle
 import math
 
+from kamarketplace.objects.price import Price
+
 import logging
 from kamarketplace.logger.formatter import CustomFormatter
-
 from kamarketplace.protocol.read_primitives import Data, DIC_TYPES
+
+from sqlalchemy import create_engine, inspect
+from kamarketplace.connectors.sql import DICT_SQL_TABLES_PROD
+
+engine = create_engine('sqlite:///postgres.db')
 
 from pathlib import Path
 import sys
@@ -55,6 +61,7 @@ class Packet:
         self.content = {}
         self.print()
         self.read_header()
+        self.sniff_time = self.pa.time
 
     def dump(self):
         global packet_dump
@@ -176,6 +183,23 @@ class Packet:
                 i += 1
 
         return var_values
+
+    # def get_sql_table(self):
+    #     table_name = DICT_SQL_TABLES_PROD[self.protocol_name]
+    #     inspector = inspect(engine)
+    #
+    #     if table_name in inspector.get_table_names():
+    #         table_structure = inspector.get_columns(table_name)
+    #         return table_name, table_structure
+    #
+    #     else:
+    #         return None
+
+    def push_pg(self):
+        # table_name, table_structure = self.get_sql_table()
+        # need to transform the content (flattening, only extracting the valuable columns)
+        resource = Price(self.content, self.sniff_time)
+        resource.to_pg()
 
 
 

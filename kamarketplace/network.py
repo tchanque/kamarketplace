@@ -30,6 +30,14 @@ def on_receive(pa):
     message = Packet(pa)
     message.print()
     message.launch_read()
+    try:
+        getattr(message, "protocol_name") & getattr(message, "content")
+        if message.protocol_name == "BidExchangerObjectInfo":
+            print("Inserting the resources prices in the Database")
+            message.push_pg()
+
+    except AttributeError:
+        print("Protocol not defined")
 
 
 interface = "en0"
@@ -59,5 +67,5 @@ def launch_sniff(action, offline=None):
 if __name__ == "__main__":
     launch_sniff(
         action=on_receive,
-        # offline="data/captured_packets.pcap"
+        offline="data/captured_packets.pcap"
                  )
