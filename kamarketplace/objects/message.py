@@ -4,9 +4,10 @@ import os
 import pickle
 import math
 
+from kamarketplace.objects.price import Price
+
 import logging
 from kamarketplace.logger.formatter import CustomFormatter
-
 from kamarketplace.protocol.read_primitives import Data, DIC_TYPES
 
 from pathlib import Path
@@ -53,6 +54,8 @@ class Packet:
         self.header = None
         self.data = None
         self.content = {}
+        self.sniff_time = self.pa.time
+
         self.print()
         self.read_header()
 
@@ -90,13 +93,15 @@ class Packet:
         self.data = Data(self.header.read(data_length))
 
         log.info("Successfully read the header. Protocol name is %s" % self.protocol_name)
+        print("Protocol name : %s" % self.protocol_name)
+        if self.protocol_name == 'ExchangeBidHouseSearchMessage':
+            print(self.payload)
 
     def launch_read(self):
         log.info("Starting packet deserialization")
         while self.data.remaining:
             self.read(type_=self.protocol_name)
 
-        print("The content of the packet is")
         pprint(self.content)
         log.info("Packet deserialization is over")
 
@@ -106,7 +111,7 @@ class Packet:
 
         # type can be false, in this case we need to read the first unsigned short which corresponds to the type id
         if type_ is False:
-            print("Type is False so reading the unsigned short to get the id")
+            # print("Type is False so reading the unsigned short to get the id")
             type_ = types_from_id[self.data.read_unsignedshort()]
 
         # if type is directly coming from a variable then it is a string
@@ -131,7 +136,7 @@ class Packet:
         results.update(self.read_bool_vars(type_['boolVars']))
 
         for var in type_['vars']:
-            print("Reading variable %s from %s" % (var["name"], self.data.remaining))
+            # print("Reading variable %s from %s" % (var["name"], self.data.remaining))
             if var["optional"]:
                 if not self.data.read_byte():
                     continue
@@ -150,7 +155,7 @@ class Packet:
                 results[var["name"]] = self.read(var['type'])
 
         self.content.update(results)
-        print(self.content)
+        # print(self.content)
         return results
 
     def read_bool_vars(self, bool_vars):
@@ -172,10 +177,14 @@ class Packet:
             i = 1
             for var in bool_vars:
                 var_values.update({var: bool(int(b[-i]))})
-                print("Updating dictionary")
+                # print("Updating dictionary")
                 i += 1
 
         return var_values
+
+    def push_pg(self):
+        price = Price(self.content, self.sniff_time)
+        price.to_pg()
 
 
 
