@@ -1,5 +1,6 @@
-from scapy.all import PcapReader, Raw, sniff
+from scapy.all import PcapReader, Raw, sniff, conf
 from objects.message import Packet
+import asyncio
 
 
 def sniff_(
@@ -8,7 +9,7 @@ def sniff_(
         # lfilter=None,
         # store=False,
         # stop_event=None,
-        # refresh=0.1,
+        refresh=False,
         *args,
         **kwargs
 ):
@@ -20,19 +21,19 @@ def sniff_(
     else:
         sniff(
             prn=prn,
-            # count=10,
+            # refresh=refresh,
+            # L3socket=conf.L3socket,
+            # count=0,
             *args, **kwargs)
 
 
 def on_receive(pa):
-    # do something when receive the packet
     print("Packet received --- launching the interpretation")
     message = Packet(pa)
-    message.print()
     message.launch_read()
 
-    if getattr(message, "protocol_name") and message.protocol_name == "ExchangeTypesItemsExchangerDescriptionForUserMessage":
-        print("Inserting the resources prices in the Database")
+    if getattr(message, "protocol_name") and\
+            message.protocol_name == "ExchangeTypesItemsExchangerDescriptionForUserMessage":
         message.push_pg()
 
 
@@ -63,5 +64,5 @@ def launch_sniff(action, offline=None):
 if __name__ == "__main__":
     launch_sniff(
         action=on_receive,
-        offline="data/captured_packets.pcap"
+        # offline="data/captured_packets.pcap"
                  )

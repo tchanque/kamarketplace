@@ -2,6 +2,7 @@ from sqlalchemy import create_engine, Column, Integer, DateTime, VARCHAR
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker
 import os
+from datetime import datetime
 
 PG_USER = os.environ['POSTGRESQL_USER']
 PG_PASSWORD = os.environ['POSTGRESQL_PWD']
@@ -32,12 +33,12 @@ class PriceTable(Base):
 
 
 class Price:
-    def __init__(self, packet_content, datetime):
+    def __init__(self, packet_content, timestamp_):
         self.packet_content = packet_content
-        self.datetime = str(datetime)
+        self.datetime_ = datetime.fromtimestamp(timestamp_).strftime("%Y-%m-%d %H:%M:%S")
         self.price_1, self.price_10, self.price_100 = self.packet_content['prices']
         self.object_id = self.packet_content['objectGID']
-        self.id_ = "_".join([str(self.object_id), self.datetime])
+        self.id_ = "_".join([str(self.object_id), str(self.datetime_)])
 
     def to_pg(self):
 
@@ -48,9 +49,9 @@ class Price:
                          price_1=self.price_1,
                          price_10=self.price_10,
                          price_100=self.price_100,
-                         value_date=self.datetime)
+                         value_date=self.datetime_)
         print("Inserting the rows corresponding to %s" % [self.object_id, self.price_1, self.price_10,
-                                                          self.price_100, self.datetime])
+                                                          self.price_100, self.datetime_])
         session.add(row)
         session.commit()
         session.close()

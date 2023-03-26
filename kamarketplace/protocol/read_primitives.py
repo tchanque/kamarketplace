@@ -14,7 +14,7 @@ class Data:
         return result
 
     def read_double(self):
-        print("Reading double from %s" % self.remaining)
+        # print("Reading double from %s" % self.remaining)
         return struct.unpack("!d", self.read(8))[0]
 
     def read_boolean(self):
@@ -23,7 +23,7 @@ class Data:
         return bool(ans[0])
 
     def read_byte(self, byte_number=1):
-        print("Reading byte from %s" % self.remaining)
+        # print("Reading byte from %s" % self.remaining)
         return int.from_bytes(self.read(byte_number), byteorder="big", signed=True)
 
     def read_unsigned_byte(self, byte_number=1):
@@ -34,36 +34,36 @@ class Data:
         return self.read(lon)
 
     def read_float(self):
-        print("Reading float from %s" % self.remaining)
+        # print("Reading float from %s" % self.remaining)
         return struct.unpack("!f", self.read(4))[0]
 
     def read_int(self):
-        print("Reading integer from %s" % self.remaining)
+        # print("Reading integer from %s" % self.remaining)
         return int.from_bytes(self.read(4), byteorder="big", signed=True)
 
     def read_short(self):
-        print("Reading short from %s" % self.remaining)
+        # print("Reading short from %s" % self.remaining)
         return int.from_bytes(self.read(2), byteorder="big", signed=True)
 
     def read_utf(self):
         length = self.read_unsignedshort()
-        print("Decoding UTF from %s" % self.remaining)
+        # print("Decoding UTF from %s" % self.remaining)
         return self.read(length).decode()
 
     def read_unsignedbyte(self):
-        print("Reading unsigned byte from %s" % self.remaining)
+        # print("Reading unsigned byte from %s" % self.remaining)
         return int.from_bytes(self.read(1), "big")
 
     def read_unsignedint(self):
-        print("Reading unsigned integer from %s" % self.remaining)
+        # print("Reading unsigned integer from %s" % self.remaining)
         return int.from_bytes(self.read(4), "big")
 
     def read_unsignedshort(self):
-        print("Reading unsigned short from %s" % self.remaining)
+        # print("Reading unsigned short from %s" % self.remaining)
         return int.from_bytes(self.read(2), byteorder="big")
 
     def read_varint(self):
-        print("Reading unsigned var integer from %s" % self.remaining)
+        # print("Reading unsigned var integer from %s" % self.remaining)
         ans = 0
         for i in range(0, 32, 7):
             b = self.read_unsignedbyte()
@@ -73,7 +73,7 @@ class Data:
         raise Exception("Too much data")
 
     def read_varlong(self):
-        print("Reading var long from %s" % self.remaining)
+        # print("Reading var long from %s" % self.remaining)
         ans = 0
         for i in range(0, 64, 7):
             b = self.read_unsigned_byte()
