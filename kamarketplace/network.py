@@ -1,34 +1,32 @@
-from scapy.all import PcapReader, Raw, sniff, conf
+from scapy.all import PcapReader, Raw, sniff
 from objects.message import Packet
 import asyncio
 
 
-def sniff_(
+async def sniff_packets(
         prn=None,
         offline=None,
-        # lfilter=None,
-        # store=False,
-        # stop_event=None,
-        refresh=False,
         *args,
         **kwargs
 ):
     if offline is not None:
-        p = PcapReader(offline)
-        print("Read the pcap")
-        for pa in p:
-            prn(pa)
-    else:
-        sniff(
-            prn=prn,
-            # refresh=refresh,
-            # L3socket=conf.L3socket,
-            # count=0,
-            *args, **kwargs)
+        with PcapReader(offline) as pcap_reader:
+            print("Reading pcap file...")
+            for pa in pcap_reader:
+                await on_packet_received(pa)
+            print("Finished reading the pcap file...")
+
+    sniffer = sniff(prn=prn, *args, **kwargs)
+
+    return sniffer
+
+
+async def on_packet_received(packet):
+    await on_receive(packet)
 
 
 def on_receive(pa):
-    print("Packet received --- launching the interpretation")
+    print("Packet received --- launching the interpretation...")
     message = Packet(pa)
     message.launch_read()
 
@@ -37,32 +35,30 @@ def on_receive(pa):
         message.push_pg()
 
 
-interface = "en0"
-
-
-def launch_sniff(action, offline=None):
+async def launch_sniff(action, offline=None):
     print("[*] Start sniffing...")
 
+    iface = "en0"
+    filter_options = "tcp port 5555"
+
     if offline:
-        # Read a pcap file
-        sniff_(iface=interface,
-               filter="tcp port 5555",
-               prn=action,
-               lfilter=lambda p: p.haslayer(Raw),
-               offline=offline,
-               )
+        sniffer = await sniff_packets(iface=iface, filter=filter_options, prn=action,
+                                      lfilter=lambda p: p.haslayer(Raw), offline=offline
+                                      )
+
+        for packet in sniffer:
+            on_receive(packet)
 
     else:
-        # Sniff live
-        sniff_(iface=interface,
-               filter="tcp port 5555",
-               prn=action,
-               lfilter=lambda p: p.haslayer(Raw),
-               )
+        sniffer = await sniff_packets(iface=iface, filter=filter_options, prn=action, lfilter=lambda p: p.haslayer(Raw))
+
+        sniffer.start()
+        await asyncio.sleep(10)
+        sniffer.stop()
 
 
 if __name__ == "__main__":
-    launch_sniff(
-        action=on_receive,
-        # offline="data/captured_packets.pcap"
-                 )
+    asyncio.run(launch_sniff(action=on_receive,
+                             # offline="data/captured_packets.pcap"
+                             )
+                )
