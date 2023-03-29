@@ -1,3 +1,5 @@
+import errno
+
 from scapy.all import PcapReader, Raw, conf
 from scapy import plist
 from scapy.data import ETH_P_ALL, MTU
@@ -81,16 +83,6 @@ def sniff_packets(prn=None, offline=None,
     #     return sniff(prn=prn, *args, **kwargs)
 
 
-def on_packet_received(packet):
-    """
-    Callback function to be called for each packet received.
-
-    Args:
-        packet (scapy.packet.Packet): The packet received.
-    """
-    on_receive(packet)
-
-
 def on_receive(pa):
     """
     Processes a packet received.
@@ -172,5 +164,5 @@ def launch_sniff(action, offline=None):
 
 if __name__ == "__main__":
     launch_sniff(action=on_receive,
-                 offline="data/captured_packets.pcap"
+                 # offline="data/captured_packets.pcap"
     )
