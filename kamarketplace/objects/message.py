@@ -36,7 +36,7 @@ packet_dump = PcapWriter(path_to_dump,
                          append=True,
                          sync=True)
 
-with (Path(__file__).parent / "protocol.pk").open("rb") as f:
+with open(os.path.join(os.path.dirname(os.getcwd()), 'kamarketplace', 'protocol/protocol.pk'), mode="rb") as f:
     types = pickle.load(f)
     msg_from_id = pickle.load(f)
     types_from_id = pickle.load(f)
@@ -187,6 +187,7 @@ class Packet:
         price.to_pg()
 
 
+class Buffer(Data):
 
-
-
+    def add_packet(self, packet):
+        self.data += packet

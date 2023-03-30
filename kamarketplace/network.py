@@ -21,11 +21,8 @@ class PacketBuffer:
         return packets
 
 
-buf = PacketBuffer()
-
-
 def sniff_packets(prn=None, offline=None,
-                  refresh=0.1, lfilter=None, store=False,
+                  refresh=0.01, lfilter=None, store=False,
                   stop_event=None, *args, **kwargs):
 
     if offline is None:
@@ -45,6 +42,7 @@ def sniff_packets(prn=None, offline=None,
                 return []
             raise
 
+    lst = []
     try:
         while True:
             if stop_event and stop_event.is_set():
@@ -60,7 +58,7 @@ def sniff_packets(prn=None, offline=None,
                 if lfilter and not lfilter(p):
                     continue
                 if store:
-                    buf.add_packet(p)
+                    lst.append(p)
                 if prn:
                     r = prn(p)
                     if r is not None:
@@ -70,7 +68,7 @@ def sniff_packets(prn=None, offline=None,
     finally:
         s.close()
 
-    return buf.flush()
+    return plist.PacketList(lst, "Sniffed")
 
     # if offline is not None:
     #     with PcapReader(offline) as pcap_reader:
@@ -83,6 +81,15 @@ def sniff_packets(prn=None, offline=None,
     #     return sniff(prn=prn, *args, **kwargs)
 
 
+def raw(pa):
+    """Raw data from a packet
+    """
+    return pa.getlayer(Raw).load
+
+
+buf = PacketBuffer()
+
+
 def on_receive(pa):
     """
     Processes a packet received.
@@ -91,12 +98,18 @@ def on_receive(pa):
         pa (scapy.packet.Packet): The packet to process.
     """
     print("Packet received --- launching the interpretation...")
-    message = Packet(pa)
-    message.launch_read()
+    buf += Packet(pa)
 
-    if getattr(message, "protocol_name") and \
-            message.protocol_name == "ExchangeTypesItemsExchangerDescriptionForUserMessage":
-        message.push_pg()
+    while buf:
+        message.laun
+        buf = buf.flush()
+
+    # message = Packet(pa)
+    # message.launch_read()
+    #
+    # if getattr(message, "protocol_name") and \
+    #         message.protocol_name == "ExchangeTypesItemsExchangerDescriptionForUserMessage":
+    #     message.push_pg()
 
 
 def launch_sniff(action, offline=None):
