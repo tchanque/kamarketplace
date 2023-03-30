@@ -1,4 +1,4 @@
-from kamarketplace.objects.message import Packet
+from kamarketplace.objects.msg import Packet
 from kamarketplace.network import launch_sniff
 
 

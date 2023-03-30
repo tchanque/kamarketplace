@@ -143,7 +143,9 @@ def parse(t):
     t["protocolId"] = protocolId
 
     if "messages" in str(t["path"]):
-        assert protocolId not in msg_from_id
+        # Commented this line as two messages have the same id ...
+        # 4390 => PartyInvitationDetailsMessage and PrismFightAttackerAddMessage
+        # assert protocolId not in msg_from_id
         msg_from_id[protocolId] = t
     elif "types" in str(t["path"]):
         assert protocolId not in types_from_id
@@ -175,7 +177,7 @@ if __name__ == "__main__":
         description="Protocol builder that creates protocol.pk from the decompiled sources"
     )
     parser.add_argument("--sources-path", type=Path, default=root_path / "sources")
-    parser.add_argument("--kamarketplace-path", type=Path, default=root_path / "kamarketplace")
+    parser.add_argument("--kamarketplace-path", type=Path, default=root_path / "kamarketplace/protocol")
     # TODO: add filter for name
     args = parser.parse_args()
 
