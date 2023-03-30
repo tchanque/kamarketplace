@@ -1,49 +1,108 @@
-import errno
+#!/usr/bin/env python3
 
-from scapy.all import PcapReader, Raw, conf
-from scapy import plist
-from scapy.data import ETH_P_ALL, MTU
-from objects.message import Packet
+
+import os
+import sys
+
+# Necessary on macOS if the folder of libdnet is not in
+# ctypes.macholib.dyld.DEFAULT_LIBRARY_FALLBACK
+# because the newer macOS do not allow to export
+# $DYLD_FALLBACK_LIBRARY_PATH with sudo
+if os.name == "posix" and sys.platform == "darwin":
+    import ctypes.macholib.dyld
+
+    ctypes.macholib.dyld.DEFAULT_LIBRARY_FALLBACK.insert(0, "/opt/local/lib")
+
+import socket
 import threading
 from select import select
+import errno
+
+from scapy.all import conf
+from scapy import plist
+from scapy.all import Raw, IP, PcapReader
+from scapy.data import ETH_P_ALL, MTU
+from scapy.consts import WINDOWS
+
+import logging
+
+from pathlib import Path
+import sys
+
+from kamarketplace.objects.msg import Msg
+from kamarketplace.objects.binrw import Buffer
+from kamarketplace.objects.price import Price
+
+path_root = Path(__file__).parents[2]
+sys.path.append(str(path_root))
+
+logger = logging.getLogger("labot")
 
 
-class PacketBuffer:
-    def __init__(self):
-        self.buffer = []
+def sniff(
+    store=False,
+    prn=None,
+    lfilter=None,
+    stop_event=None,
+    refresh=0.1,
+    offline=None,
+    *args,
+    **kwargs
+):
+    """Sniff packets
+sniff([count=0,] [prn=None,] [store=1,] [offline=None,] [lfilter=None,] + L2ListenSocket args)
+Modified version of scapy.all.sniff
 
-    def add_packet(self, packet):
-        self.buffer.append(packet)
+store : bool
+    wether to store sniffed packets or discard them
 
-    def flush(self):
-        packets = self.buffer
-        self.buffer = []
-        return packets
+prn : None or callable
+    function to apply to each packet. If something is returned,
+    it is displayed.
+    ex: prn = lambda x: x.summary()
 
+lfilter : None or callable
+    function applied to each packet to determine
+    if further action may be done
+    ex: lfilter = lambda x: x.haslayer(Padding)
 
-def sniff_packets(prn=None, offline=None,
-                  refresh=0.01, lfilter=None, store=False,
-                  stop_event=None, *args, **kwargs):
+stop_event : None or Event
+    Event that stops the function when set
 
+refresh : float
+    check stop_event.set() every `refresh` seconds
+    """
+    logger.debug("Setting up sniffer...")
     if offline is None:
         L2socket = conf.L2listen
         s = L2socket(type=ETH_P_ALL, *args, **kwargs)
     else:
         s = PcapReader(offline)
 
-    read_allowed_exceptions = EOFError
+    # on Windows, it is not possible to select a L2socket
+    if WINDOWS:
+        from scapy.arch.pcapdnet import PcapTimeoutElapsed
 
-    def _select(sockets):
-        try:
-            return select(sockets, [], [], refresh)[0]
-        except OSError as exc:
-            # Catch 'Interrupted system call' errors
-            if exc.errno == errno.EINTR:
-                return []
-            raise
+        read_allowed_exceptions = (PcapTimeoutElapsed,)
+
+        def _select(sockets):
+            return sockets
+
+    else:
+        read_allowed_exceptions = ()
+
+        def _select(sockets):
+            try:
+                return select(sockets, [], [], refresh)[0]
+            except OSError as exc:
+                # Catch 'Interrupted system call' errors
+                if exc.errno == errno.EINTR:
+                    return []
+                raise
 
     lst = []
     try:
+        logger.debug("Started Sniffing")
         while True:
             if stop_event and stop_event.is_set():
                 break
@@ -52,6 +111,8 @@ def sniff_packets(prn=None, offline=None,
                 try:
                     p = s.recv(MTU)
                 except read_allowed_exceptions:
+                    # could add a sleep(refresh) if the CPU usage
+                    # is too much on windows
                     continue
                 if p is None:
                     break
@@ -66,19 +127,10 @@ def sniff_packets(prn=None, offline=None,
     except KeyboardInterrupt:
         pass
     finally:
+        logger.debug("Stopped sniffing.")
         s.close()
 
     return plist.PacketList(lst, "Sniffed")
-
-    # if offline is not None:
-    #     with PcapReader(offline) as pcap_reader:
-    #         print("Reading pcap file...")
-    #         for pa in pcap_reader:
-    #             await on_packet_received(pa)
-    #         print("Finished reading the pcap file...")
-    #
-    # else:
-    #     return sniff(prn=prn, *args, **kwargs)
 
 
 def raw(pa):
@@ -87,60 +139,85 @@ def raw(pa):
     return pa.getlayer(Raw).load
 
 
-buf = PacketBuffer()
-
-
-def on_receive(pa):
+def get_local_ip():
+    """from https://stackoverflow.com/a/28950776/5133167
     """
-    Processes a packet received.
+    s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+    try:
+        # doesn't even have to be reachable
+        s.connect(("10.255.255.255", 1))
+        IP = s.getsockname()[0]
+    except:
+        IP = "127.0.0.1"
+    finally:
+        s.close()
+    return IP
 
-    Args:
-        pa (scapy.packet.Packet): The packet to process.
+
+LOCAL_IP = get_local_ip()
+
+
+def from_client(pa):
+    logger.debug("Determining packet origin...")
+    dst = pa.getlayer(IP).dst
+    src = pa.getlayer(IP).src
+    if src == LOCAL_IP:
+        logger.debug("Packet comes from local machine")
+        return True
+    elif dst == LOCAL_IP:
+        logger.debug("Packet comes from server")
+        return False
+    logger.error(
+        "Packet origin unknown\nsrc: %s\ndst: %s\nLOCAL_IP: %s", src, dst, LOCAL_IP
+    )
+    assert False, "Packet origin unknown"
+
+
+buf1 = Buffer()
+buf2 = Buffer()
+
+
+def on_receive(pa, action):
+    """Adds pa to the relevant buffer
+    Parse the messages from that buffer
+    Calls action on that buffer
     """
-    print("Packet received --- launching the interpretation...")
-    buf += Packet(pa)
-
-    while buf:
-        message.laun
-        buf = buf.flush()
-
-    # message = Packet(pa)
-    # message.launch_read()
-    #
-    # if getattr(message, "protocol_name") and \
-    #         message.protocol_name == "ExchangeTypesItemsExchangerDescriptionForUserMessage":
-    #     message.push_pg()
+    logger.debug("Received packet. ")
+    direction = from_client(pa)
+    buf = buf1 if direction else buf2
+    buf += raw(pa)
+    sniff_time = pa.time
+    msg = Msg.fromRaw(buf, direction)
+    while msg:
+        action(msg, sniff_time)
+        msg = Msg.fromRaw(buf, direction)
 
 
-def launch_sniff(action, offline=None):
+def launch_in_thread(action, capture_file=None):
+    """Sniff in a new thread
+    When a packet is received, calls action
+    Returns a stop function
     """
-    Launches a packet sniffer.
 
-    Args:
-        action (function): Callback function to be called for each packet received.
-        offline (str): Path to a pcap file to read packets from. Defaults to None.
-    """
-    print("[*] Start sniffing...")
-
-    iface = "en0"
-    filter_options = "tcp port 5555"
+    logger.debug("Launching sniffer in thread...")
 
     def _sniff(stop_event):
-        if offline:
-            sniff_packets(
+        if capture_file:
+            sniff(
                 filter="tcp port 5555",
                 lfilter=lambda p: p.haslayer(Raw),
                 stop_event=stop_event,
-                prn=lambda p: on_receive(p),
-                offline=offline,
+                prn=lambda p: on_receive(p, action),
+                offline=capture_file,
             )
         else:
-            sniff_packets(
+            sniff(
                 filter="tcp port 5555",
                 lfilter=lambda p: p.haslayer(Raw),
                 stop_event=stop_event,
-                prn=lambda p: on_receive(p),
+                prn=lambda p: on_receive(p, action),
             )
+        logger.info("sniffing stopped")
 
     e = threading.Event()
     t = threading.Thread(target=_sniff, args=(e,))
@@ -149,33 +226,25 @@ def launch_sniff(action, offline=None):
     def stop():
         e.set()
 
+    logger.debug("Started sniffer in new thread")
+
     return stop
 
-        # if offline:
-        #     sniffer = await sniff_packets(
-        #         iface=iface,
-        #         filter=filter_options,
-        #         prn=action,
-        #         lfilter=lambda p: p.haslayer(Raw),
-        #         offline=offline
-        #     )
-        #
-        #     for packet in sniffer:
-        #         on_receive(packet)
-        #
-        # else:
-        #     sniffer = await sniff_packets(
-        #         iface=iface,
-        #         filter=filter_options,
-        #         prn=action,
-        #         lfilter=lambda p: p.haslayer(Raw)
-        #     )
-        #
-        # sniffer.start()
-        # sniffer.stop()
+
+def on_msg(msg, time):
+    global m
+    m = msg
+    from pprint import pprint
+
+    pprint(msg.json()["__type__"])
+    print(msg.parsed)
+    print(Msg.from_json(msg.json()).data)
+
+    if msg.json()["__type__"] == "ExchangeTypesItemsExchangerDescriptionForUserMessage":
+        print("Caught a packet with resource prices")
+        price = Price(msg.parsed['itemTypeDescriptions'][0], time)
+        price.to_pg()
 
 
 if __name__ == "__main__":
-    launch_sniff(action=on_receive,
-                 # offline="data/captured_packets.pcap"
-    )
+    stop = launch_in_thread(on_msg)

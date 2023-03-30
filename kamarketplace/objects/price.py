@@ -1,8 +1,9 @@
-from sqlalchemy import create_engine, Column, Integer, DateTime, VARCHAR
+from sqlalchemy import create_engine, Column, Integer, VARCHAR
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker
 import os
 from datetime import datetime
+from kamarketplace.variables.sql import DICT_SQL_TABLES_PROD, DICT_SQL_TABLES_DEV
 
 PG_USER = os.environ['POSTGRESQL_USER']
 PG_PASSWORD = os.environ['POSTGRESQL_PWD']
@@ -20,8 +21,11 @@ Base = declarative_base()
 
 
 # Define a model for the table
-class PriceTable(Base):
-    __tablename__ = "prod_resource_prices"
+class PriceTable(Base, dev=True):
+    __tablename__ = DICT_SQL_TABLES_PROD
+
+    if dev:
+        __tablename__ = DICT_SQL_TABLES_DEV
 
     id = Column(VARCHAR, primary_key=True)
 
