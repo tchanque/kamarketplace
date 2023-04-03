@@ -5,7 +5,6 @@ import sys
 
 from kamarketplace.protocol import protocol
 from kamarketplace.objects.binrw import Buffer, Data
-from kamarketplace.objects.price import Price
 
 path_root = Path(__file__).parents[2]
 sys.path.append(str(path_root))
